@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aas_editor"
+version = "v0.1"
+dependencies = [
+    "basyx-python-sdk>=1.0.0",
+    "pyi40aas>=0.2.3",
+]
+
+requires-python = ">=3.10"
+authors = [
+  {name = "Igor Garmaev", email = "i.garmaev@iat.rwth-aachen.de"},
+]
+maintainers = [
+  {name = "Igor Garmaev", email = "i.garmaev@iat.rwth-aachen.de"},
+]
+description = "Tool for upgrading existing AAS from v2.0.1 to V3.0.1"
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["AAS", "Upgrader"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+
+[tool.setuptools.packages.find]
+where = ["aas_upgrader"]
+include = ["."]
+
+
+[project.urls]
+Homepage = "https://github.com/rwth-iat/aas_upgrader_tool"
+Repository = "https://github.com/rwth-iat/aas_upgrader_tool.git"
+"Bug Tracker" = "https://github.com/rwth-iat/aas_upgrader_tool/issues"
+
+[project.entry-points."spam"]
+aas_upgader = "main:main"
