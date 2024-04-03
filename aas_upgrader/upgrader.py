@@ -4,24 +4,22 @@ from basyx2.aas import model as model2
 from aas_upgrader.util import get_initialization_parameters
 
 NEWCLASS = "newclass"  # new class to use
-NEWPARAM_TO_OLDATTR = "newparam_to_oldattr"  # mapping betw. init-params of new object and attrs of old object
-IGNORE_PARAMS = "ignore_params"  # params to ignore
+NEWPARAM_TO_OLDATTR = "newparam_to_oldattr"  # Mapping between new parameters and old attributes
+IGNORE_PARAMS = "ignore_params"  # Parameters to exclude from initialization
 # NEWPARAM_VAL = "newparam_val"  # init-params values of new object
-NEWPARAM_EVAL = "newparam_eval"  # init-params values of new object as str to be executed in python
-VAL_EVAL = "val_eval"  # value of ne object as str to be executed in python
-
-
-#   - fromV2toV3 - function to modify object from V2 to V3
-#   - old_obj - old object of version 2
+NEWPARAM_EVAL = "newparam_eval"  # Expressions for evaluating new parameters (str to be executed in python)
+VAL_EVAL = "val_eval"  # Expression for evaluating the value of a new object (str to be executed in python)
 
 
 class AAS_Classes_Upgrader:
-    OBJ_MAPPINGS = {
+    not_supported_types_for_upgrade = [model2.aas.View, model2.base.Formula, model2.submodel.BasicEvent]
+    type_mappings = {
         bool: bool,
         int: int,
         float: float,
         str: str,
         type(None): type(None),
+        bytearray:bytearray,
         model2.datatypes.GYear: model3.datatypes.GYear,
         model2.datatypes.GMonthDay: model3.datatypes.GMonthDay,
         model2.datatypes.GDay: model3.datatypes.GDay,
@@ -41,7 +39,23 @@ class AAS_Classes_Upgrader:
         model2.datatypes.AnyURI: model3.datatypes.AnyURI,
         model2.datatypes.NormalizedString: model3.datatypes.NormalizedString,
     }
-    UPGRADER_RULES = {
+    types_requiring_no_upgrade = [bool, int, float, str, type(None), bytearray, bytes,
+                                  # datatypes
+                                  model2.datatypes.Base64Binary,
+                                  model2.datatypes.HexBinary,
+                                  model2.datatypes.Float,
+                                  model2.datatypes.Duration,
+                                  model2.datatypes.DateTime,
+                                  model2.datatypes.Time,
+                                  # base
+                                  model2.base.ValueReferencePair,
+                                  # enums
+                                  ]
+    common_ignored_params = ["display_name", "embedded_data_specifications", "supplemental_semantic_id", "extension",
+                               "parent"]
+    common_new_params_to_old_attributes = {}
+    common_evals_for_new_params = {"description": "model3.base.MultiLanguageTextType(old_obj.description)"}
+    upgrade_rules = {
         model2.base.AdministrativeInformation: {
             NEWCLASS: model3.base.AdministrativeInformation,
             IGNORE_PARAMS: ["creator", "template_id"],
@@ -62,23 +76,23 @@ class AAS_Classes_Upgrader:
             VAL_EVAL: "old_obj.id"
         },
         model2.base.Reference: {
-            VAL_EVAL: "cls._upgrade_reference(old_obj)"
+            VAL_EVAL: "self._upgrade_reference(old_obj)"
         },
         model2.base.AASReference: {
-            VAL_EVAL: "cls._upgrade_reference(old_obj)"
+            VAL_EVAL: "self._upgrade_reference(old_obj)"
         },
         model2.base.NamespaceSet: {
-            VAL_EVAL: "cls._upgrade_iterable([i for i in old_obj])",
+            VAL_EVAL: "self._upgrade_iterable([i for i in old_obj])",
         },
         model2.base.OrderedNamespaceSet: {
-            VAL_EVAL: "cls._upgrade_iterable([i for i in old_obj])",
+            VAL_EVAL: "self._upgrade_iterable([i for i in old_obj])",
         },
 
         # aas
         model2.aas.AssetAdministrationShell: {
             NEWCLASS: model3.aas.AssetAdministrationShell,
             NEWPARAM_EVAL: {
-                "asset_information": "AAS_Classes_Upgrader.upgrade(old_obj.asset.resolve(cls.provider))",
+                "asset_information": "self.upgrade(old_obj.asset.resolve(self.provider))",
                 "id_": "old_obj.identification.id",
             },
         },
@@ -119,7 +133,7 @@ class AAS_Classes_Upgrader:
             NEWPARAM_EVAL: {"value": "model3.base.MultiLanguageTextType(old_obj.value)"}
         },
         model2.submodel.OperationVariable: {
-            VAL_EVAL: "AAS_Classes_Upgrader.upgrade(old_obj.value)"
+            VAL_EVAL: "self.upgrade(old_obj.value)"
             # Upgrade SubmodelElement saved in OperationVariable
         },
         model2.submodel.Operation: {NEWCLASS: model3.submodel.Operation},
@@ -156,132 +170,118 @@ class AAS_Classes_Upgrader:
         model2.datatypes.AnyURI: {VAL_EVAL: "model3.datatypes.AnyURI(old_obj)"},
         model2.datatypes.NormalizedString: {VAL_EVAL: "model3.datatypes.NormalizedString(old_obj)"},
     }
-    COMMON_TYPES = [bool, int, float, str, type(None), bytearray,
-                    # datatypes
-                    model2.datatypes.Base64Binary,
-                    model2.datatypes.HexBinary,
-                    model2.datatypes.Float,
-                    model2.datatypes.Duration,
-                    model2.datatypes.DateTime,
-                    model2.datatypes.Time,
-                    # base
-                    model2.base.ValueReferencePair,
-                    # enums
-                    ]
-    NOT_SUPPORTED_TYPES = [model2.aas.View, model2.base.Formula, model2.submodel.BasicEvent]
 
-    DICT_TYPES = [dict]
-    ITERABLE_TYPES = [list, tuple, set]
+    dict_types = [dict]
+    iterable_types = [list, tuple, set]
 
-    COMMON_PARAMS_TO_IGNORE = ["display_name", "embedded_data_specifications", "supplemental_semantic_id", "extension",
-                               "parent"]
-    COMMON_NEWPARAMS_TO_OLDATTRS = {}
-    COMMON_NEWPARAM_EVALS = {"description": "model3.base.MultiLanguageTextType(old_obj.description)"}
+    def __init__(self, provider=None):
+        self.provider = provider
 
-    @classmethod
-    def _upgrade_reference(cls, old_obj):
+    def _upgrade_reference(self, old_obj):
         if type(old_obj) is model2.base.AASReference:
-            new_key = cls.upgrade(old_obj.key)
+            new_key = self.upgrade(old_obj.key)
             return model3.base.ModelReference(key=new_key, type_=old_obj.type)
         if type(old_obj) is model2.base.Reference:
-            new_key = list(cls.upgrade(old_obj.key))
+            new_key = list(self.upgrade(old_obj.key))
             new_key[0] = model3.base.Key(model3.base.KeyTypes.GLOBAL_REFERENCE, new_key[0].value)
             return model3.base.ExternalReference(key=tuple(new_key))
 
-    @classmethod
-    def _upgrade_iterable(cls, old_iterable):
+    def _upgrade_iterable(self, old_iterable):
         upgraded_items = []
         for i in old_iterable:
             try:
-                upgraded_items.append(cls.upgrade(i))
+                upgraded_items.append(self.upgrade(i))
             except NotImplementedError as e:
                 print(e, f"Upgrade of object {i} failed, as it is not supported.")
                 continue
         return type(old_iterable)(upgraded_items)
 
-    @classmethod
-    def _upgrade_dict(cls, old_dict: dict):
+    def _upgrade_dict(self, old_dict: dict):
         upgraded_dict = {}
         for key, value in old_dict.items():
             try:
-                upgraded_key = cls.upgrade(key)
+                upgraded_key = self.upgrade(key)
             except NotImplementedError as e:
                 print(e, f"Upgrade of object {key} of type {type(key)} failed, as it is not supported.")
                 continue
             try:
-                upgraded_value = cls.upgrade(value)
+                upgraded_value = self.upgrade(value)
             except NotImplementedError as e:
                 print(e, f"Upgrade of object {value} of type {type(value)} failed, as it is not supported.")
                 continue
             upgraded_dict[upgraded_key] = upgraded_value
         return upgraded_dict
 
-    @classmethod
-    def _upgrade_from_defined_rules(cls, old_obj):
+    def _upgrade_from_defined_rules(self, old_obj):
         old_obj_type = type(old_obj)
-        rule = cls.UPGRADER_RULES[old_obj_type]
+        rule = self.upgrade_rules[old_obj_type]
+
+        if VAL_EVAL in rule:
+            upgraded_obj = eval(rule[VAL_EVAL])
+            return upgraded_obj
 
         new_class = rule[NEWCLASS]
 
         init_params = list(get_initialization_parameters(new_class, withDefaults=False).keys())
-        init_params = [param for param in init_params if param not in cls.COMMON_PARAMS_TO_IGNORE]
+        init_params = [param for param in init_params if param not in self.common_ignored_params]
         init_params = [param for param in init_params if param not in rule.get(IGNORE_PARAMS, [])]
 
-        rule_param_to_oldattr = cls.COMMON_NEWPARAMS_TO_OLDATTRS.copy()
+        rule_param_to_oldattr = self.common_new_params_to_old_attributes.copy()
         rule_param_to_oldattr.update(rule.get(NEWPARAM_TO_OLDATTR, {}))
 
-        param_eval = cls.COMMON_NEWPARAM_EVALS.copy()
-        param_eval.update(rule.get(NEWPARAM_EVAL, {}))
+        rule_param_eval = self.common_evals_for_new_params.copy()
+        rule_param_eval.update(rule.get(NEWPARAM_EVAL, {}))
 
         kwargs = {}
         for param in init_params:
-            if param in param_eval:
-                newobj_param = eval(param_eval[param])
+            if param in rule_param_eval:
+                upgraded_param = eval(rule_param_eval[param])
             else:
                 old_obj_attr_name = rule_param_to_oldattr.get(param, param)
                 old_obj_attr = getattr(old_obj, old_obj_attr_name)
-                newobj_param = cls.upgrade(old_obj_attr)
-            kwargs[param] = newobj_param
-        newobj = new_class(**kwargs)
-        return newobj
+                upgraded_param = self.upgrade(old_obj_attr)
+            kwargs[param] = upgraded_param
+        upgraded_obj = new_class(**kwargs)
+        return upgraded_obj
 
-    @classmethod
-    def obj_is_aas_type(cls, obj):
-        if (type(obj) is type or type(obj) is abc.ABCMeta) and obj in cls.UPGRADER_RULES:
-            return True
-        return False
+    def is_type(self, obj):
+        return type(obj) is type or type(obj) is abc.ABCMeta
 
-    @classmethod
-    def upgrade(cls, old_obj):
-        old_obj_typ = type(old_obj)
-        if old_obj_typ in cls.NOT_SUPPORTED_TYPES:
-            raise NotImplementedError(f"Not supported type for upgrade: {old_obj_typ}")
-
-        if old_obj in tuple(cls.OBJ_MAPPINGS.keys()):
-            upgraded_obj = cls.OBJ_MAPPINGS[old_obj]
-        elif old_obj_typ in cls.COMMON_TYPES:
-            upgraded_obj = old_obj
-        elif old_obj_typ in cls.DICT_TYPES:
-            upgraded_obj = cls._upgrade_dict(old_obj)
-        elif old_obj_typ in cls.ITERABLE_TYPES:
-            upgraded_obj = cls._upgrade_iterable(old_obj)
-        elif cls.obj_is_aas_type(old_obj):
-            upgraded_obj = cls.UPGRADER_RULES.get(old_obj).get(NEWCLASS)
-        elif old_obj_typ in cls.UPGRADER_RULES and VAL_EVAL in cls.UPGRADER_RULES[old_obj_typ]:
-            upgraded_obj = eval(cls.UPGRADER_RULES[old_obj_typ][VAL_EVAL])
-        elif old_obj_typ in cls.UPGRADER_RULES:
-            upgraded_obj = cls._upgrade_from_defined_rules(old_obj)
+    def upgrade_type(self, old_obj):
+        if old_obj in tuple(self.type_mappings.keys()):
+            upgraded_obj = self.type_mappings[old_obj]
+        elif old_obj in self.upgrade_rules:
+            upgraded_obj = self.upgrade_rules.get(old_obj).get(NEWCLASS)
         else:
             raise NotImplementedError(f"Upgrade of object {old_obj} failed, as it is not supported.")
         return upgraded_obj
 
-    @classmethod
-    def upgrade_obj_store(cls, obj_store):
-        cls.provider = obj_store
+    def upgrade(self, old_obj):
+        old_obj_typ = type(old_obj)
+        if old_obj_typ in self.not_supported_types_for_upgrade:
+            raise NotImplementedError(f"Not supported type for upgrade: {old_obj_typ}")
+
+        if self.is_type(old_obj):
+            upgraded_obj = self.upgrade_type(old_obj)
+        elif old_obj_typ in self.types_requiring_no_upgrade:
+            upgraded_obj = old_obj
+        elif old_obj_typ in self.dict_types:
+            upgraded_obj = self._upgrade_dict(old_obj)
+        elif old_obj_typ in self.iterable_types:
+            upgraded_obj = self._upgrade_iterable(old_obj)
+        elif old_obj_typ in self.upgrade_rules and VAL_EVAL in self.upgrade_rules[old_obj_typ]:
+            upgraded_obj = eval(self.upgrade_rules[old_obj_typ][VAL_EVAL])
+        elif old_obj_typ in self.upgrade_rules:
+            upgraded_obj = self._upgrade_from_defined_rules(old_obj)
+        else:
+            raise NotImplementedError(f"Upgrade of object {old_obj} failed, as it is not supported.")
+        return upgraded_obj
+
+    def upgrade_obj_store(self):
         new_obj_store = model3.DictObjectStore()
-        for old_obj in obj_store:
+        for old_obj in self.provider:
             if isinstance(old_obj, model2.aas.Asset):
                 continue
-            new_obj = cls.upgrade(old_obj)
+            new_obj = self.upgrade(old_obj)
             new_obj_store.add(new_obj)
         return new_obj_store

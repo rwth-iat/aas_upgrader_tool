@@ -15,7 +15,7 @@ with open('aasV2.json', 'r', encoding='utf-8') as json_file:
     objstore_v2 = basyx2.aas.adapter.json.read_aas_json_file(json_file)
 
 
-objstore_v3 = AAS_Classes_Upgrader.upgrade_obj_store(objstore_v2)
+objstore_v3 = AAS_Classes_Upgrader(provider=objstore_v2).upgrade_obj_store()
 
 with open('aasV3.json', 'w', encoding='utf-8') as json_file:
     basyx.aas.adapter.json.write_aas_json_file(json_file, objstore_v3)
