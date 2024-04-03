@@ -16,7 +16,31 @@ VAL_EVAL = "val_eval"  # value of ne object as str to be executed in python
 
 
 class AAS_Classes_Upgrader:
-    COMMON_OBJECTS = [bool, int, float, str, type(None), model2.datatypes.Int]
+    OBJ_MAPPINGS = {
+        bool: bool,
+        int: int,
+        float: float,
+        str: str,
+        type(None): type(None),
+        model2.datatypes.GYear: model3.datatypes.GYear,
+        model2.datatypes.GMonthDay: model3.datatypes.GMonthDay,
+        model2.datatypes.GDay: model3.datatypes.GDay,
+        model2.datatypes.GMonth: model3.datatypes.GMonth,
+        model2.datatypes.Long: model3.datatypes.Long,
+        model2.datatypes.Int: model3.datatypes.Int,
+        model2.datatypes.Short: model3.datatypes.Short,
+        model2.datatypes.NonPositiveInteger: model3.datatypes.NonPositiveInteger,
+        model2.datatypes.NegativeInteger: model3.datatypes.NegativeInteger,
+        model2.datatypes.NonNegativeInteger: model3.datatypes.NonNegativeInteger,
+        model2.datatypes.PositiveInteger: model3.datatypes.PositiveInteger,
+        model2.datatypes.UnsignedLong: model3.datatypes.UnsignedLong,
+        model2.datatypes.UnsignedInt: model3.datatypes.UnsignedInt,
+        model2.datatypes.UnsignedShort: model3.datatypes.UnsignedShort,
+        model2.datatypes.UnsignedByte: model3.datatypes.UnsignedByte,
+        model2.datatypes.Byte: model3.datatypes.Byte,
+        model2.datatypes.AnyURI: model3.datatypes.AnyURI,
+        model2.datatypes.NormalizedString: model3.datatypes.NormalizedString,
+    }
     UPGRADER_RULES = {
         model2.base.AdministrativeInformation: {
             NEWCLASS: model3.base.AdministrativeInformation,
@@ -43,19 +67,6 @@ class AAS_Classes_Upgrader:
         model2.base.AASReference: {
             VAL_EVAL: "cls._upgrade_reference(old_obj)"
         },
-        # model2.base.Reference: {
-        #     NEWCLASS: model3.base.ExternalReference,
-        #     IGNORE_PARAMS: ["referred_semantic_id"],
-        #     NEWPARAM_EVAL: {
-        #         "key": "AAS_Classes_Upgrader.upgrade(old_obj.key))",
-        #     },
-        # },
-        # model2.base.AASReference: {
-        #     NEWCLASS: model3.base.ModelReference,
-        #     IGNORE_PARAMS: ["referred_semantic_id"],
-        #     NEWPARAM_TO_OLDATTR: {"type_": "type"}
-        # },
-
         model2.base.NamespaceSet: {
             VAL_EVAL: "cls._upgrade_iterable([i for i in old_obj])",
         },
@@ -84,7 +95,8 @@ class AAS_Classes_Upgrader:
         model2.submodel.Entity: {
             NEWCLASS: model3.submodel.Entity,
             NEWPARAM_TO_OLDATTR: {"asset_kind": "kind", },
-            NEWPARAM_EVAL: {"global_asset_id": "model2.base.AASReference.from_referable(old_obj).get_identifier().id"},
+            NEWPARAM_EVAL: {
+                "global_asset_id": "model2.base.AASReference.from_referable(old_obj).get_identifier().id if old_obj.entity_type.value == 1 else None"},
             IGNORE_PARAMS: ["specific_asset_id"],
         },
         model2.submodel.Submodel: {
@@ -102,9 +114,13 @@ class AAS_Classes_Upgrader:
             NEWCLASS: model3.submodel.File,
             NEWPARAM_TO_OLDATTR: {"content_type": "mime_type"},
         },
-        model2.submodel.MultiLanguageProperty: {NEWCLASS: model3.submodel.MultiLanguageProperty},
+        model2.submodel.MultiLanguageProperty: {
+            NEWCLASS: model3.submodel.MultiLanguageProperty,
+            NEWPARAM_EVAL: {"value": "model3.base.MultiLanguageTextType(old_obj.value)"}
+        },
         model2.submodel.OperationVariable: {
-            VAL_EVAL: "AAS_Classes_Upgrader.upgrade(old_obj.value)" # Upgrade SubmodelElement saved in OperationVariable
+            VAL_EVAL: "AAS_Classes_Upgrader.upgrade(old_obj.value)"
+            # Upgrade SubmodelElement saved in OperationVariable
         },
         model2.submodel.Operation: {NEWCLASS: model3.submodel.Operation},
         model2.submodel.Property: {NEWCLASS: model3.submodel.Property},
@@ -117,52 +133,50 @@ class AAS_Classes_Upgrader:
         model2.concept.ConceptDescription: {
             NEWCLASS: model3.concept.ConceptDescription,
             NEWPARAM_TO_OLDATTR: {"id_": "identification"},
-        }
+        },
+        model2.base.EntityType: {VAL_EVAL: "model3.base.EntityType(old_obj.value)"},
+        model2.base.ModelingKind: {VAL_EVAL: "model3.base.ModellingKind(old_obj.value)"},
+        model2.base.AssetKind: {VAL_EVAL: "model3.base.AssetKind(old_obj.value)"},
+        model2.datatypes.GYear: {NEWCLASS: model3.datatypes.GYear},
+        model2.datatypes.GMonthDay: {NEWCLASS: model3.datatypes.GMonthDay},
+        model2.datatypes.GDay: {NEWCLASS: model3.datatypes.GDay},
+        model2.datatypes.GMonth: {NEWCLASS: model3.datatypes.GMonth},
+        model2.datatypes.Long: {VAL_EVAL: "model3.datatypes.Long(old_obj)"},
+        model2.datatypes.Int: {VAL_EVAL: "model3.datatypes.Int(old_obj)"},
+        model2.datatypes.Short: {VAL_EVAL: "model3.datatypes.Short(old_obj)"},
+        model2.datatypes.NonPositiveInteger: {VAL_EVAL: "model3.datatypes.NonPositiveInteger(old_obj)"},
+        model2.datatypes.NegativeInteger: {VAL_EVAL: "model3.datatypes.NegativeInteger(old_obj)"},
+        model2.datatypes.NonNegativeInteger: {VAL_EVAL: "model3.datatypes.NonNegativeInteger(old_obj)"},
+        model2.datatypes.PositiveInteger: {VAL_EVAL: "model3.datatypes.PositiveInteger(old_obj)"},
+        model2.datatypes.UnsignedLong: {VAL_EVAL: "model3.datatypes.UnsignedLong(old_obj)"},
+        model2.datatypes.UnsignedInt: {VAL_EVAL: "model3.datatypes.UnsignedInt(old_obj)"},
+        model2.datatypes.UnsignedShort: {VAL_EVAL: "model3.datatypes.UnsignedShort(old_obj)"},
+        model2.datatypes.UnsignedByte: {VAL_EVAL: "model3.datatypes.UnsignedByte(old_obj)"},
+        model2.datatypes.Byte: {VAL_EVAL: "model3.datatypes.Byte(old_obj)"},
+        model2.datatypes.AnyURI: {VAL_EVAL: "model3.datatypes.AnyURI(old_obj)"},
+        model2.datatypes.NormalizedString: {VAL_EVAL: "model3.datatypes.NormalizedString(old_obj)"},
     }
     COMMON_TYPES = [bool, int, float, str, type(None), bytearray,
                     # datatypes
-                    model2.datatypes.Date,
-                    model2.datatypes.GYear,
-                    model2.datatypes.GMonthDay,
-                    model2.datatypes.GDay,
-                    model2.datatypes.GMonth,
                     model2.datatypes.Base64Binary,
                     model2.datatypes.HexBinary,
                     model2.datatypes.Float,
-                    model2.datatypes.Long,
-                    model2.datatypes.Int,
-                    model2.datatypes.Short,
-                    model2.datatypes.NonPositiveInteger,
-                    model2.datatypes.NegativeInteger,
-                    model2.datatypes.NonNegativeInteger,
-                    model2.datatypes.PositiveInteger,
-                    model2.datatypes.UnsignedLong,
-                    model2.datatypes.UnsignedInt,
-                    model2.datatypes.UnsignedShort,
                     model2.datatypes.Duration,
                     model2.datatypes.DateTime,
                     model2.datatypes.Time,
-                    model2.datatypes.UnsignedByte,
-                    model2.datatypes.Byte,
-                    model2.datatypes.AnyURI,
-                    model2.datatypes.NormalizedString,
                     # base
-                    model2.base.Constraint,
                     model2.base.ValueReferencePair,
                     # enums
-                    model2.base.IdentifierType,
-                    model2.base.KeyType,
-                    model2.base.EntityType,
-                    model2.base.ModelingKind,
-                    model2.base.AssetKind,
                     ]
     NOT_SUPPORTED_TYPES = [model2.aas.View, model2.base.Formula, model2.submodel.BasicEvent]
 
     DICT_TYPES = [dict]
     ITERABLE_TYPES = [list, tuple, set]
 
-    PARAMS_TO_IGNORE = ["embedded_data_specifications", "supplemental_semantic_id", "extension", "parent"]
-    COMMON_NEWPARAMS_TO_OLDATTRS = {"display_name": "id_short"}
+    COMMON_PARAMS_TO_IGNORE = ["display_name", "embedded_data_specifications", "supplemental_semantic_id", "extension",
+                               "parent"]
+    COMMON_NEWPARAMS_TO_OLDATTRS = {}
+    COMMON_NEWPARAM_EVALS = {"description": "model3.base.MultiLanguageTextType(old_obj.description)"}
 
     @classmethod
     def _upgrade_reference(cls, old_obj):
@@ -180,7 +194,8 @@ class AAS_Classes_Upgrader:
         for i in old_iterable:
             try:
                 upgraded_items.append(cls.upgrade(i))
-            except NotImplementedError:
+            except NotImplementedError as e:
+                print(e, f"Upgrade of object {i} failed, as it is not supported.")
                 continue
         return type(old_iterable)(upgraded_items)
 
@@ -189,30 +204,38 @@ class AAS_Classes_Upgrader:
         upgraded_dict = {}
         for key, value in old_dict.items():
             try:
-                key = cls.upgrade(key)
-                value = cls.upgrade(value)
-                upgraded_dict[key] = value
-            except NotImplementedError:
+                upgraded_key = cls.upgrade(key)
+            except NotImplementedError as e:
+                print(e, f"Upgrade of object {key} of type {type(key)} failed, as it is not supported.")
                 continue
+            try:
+                upgraded_value = cls.upgrade(value)
+            except NotImplementedError as e:
+                print(e, f"Upgrade of object {value} of type {type(value)} failed, as it is not supported.")
+                continue
+            upgraded_dict[upgraded_key] = upgraded_value
         return upgraded_dict
 
     @classmethod
     def _upgrade_from_defined_rules(cls, old_obj):
-        rule = cls.UPGRADER_RULES[type(old_obj)]
+        old_obj_type = type(old_obj)
+        rule = cls.UPGRADER_RULES[old_obj_type]
 
         new_class = rule[NEWCLASS]
 
         init_params = list(get_initialization_parameters(new_class, withDefaults=False).keys())
-        init_params = [param for param in init_params if param not in cls.PARAMS_TO_IGNORE]
+        init_params = [param for param in init_params if param not in cls.COMMON_PARAMS_TO_IGNORE]
         init_params = [param for param in init_params if param not in rule.get(IGNORE_PARAMS, [])]
 
         rule_param_to_oldattr = cls.COMMON_NEWPARAMS_TO_OLDATTRS.copy()
         rule_param_to_oldattr.update(rule.get(NEWPARAM_TO_OLDATTR, {}))
-        param_eval = rule.get(NEWPARAM_EVAL, {})
+
+        param_eval = cls.COMMON_NEWPARAM_EVALS.copy()
+        param_eval.update(rule.get(NEWPARAM_EVAL, {}))
 
         kwargs = {}
         for param in init_params:
-            if param in rule.get(NEWPARAM_EVAL, {}):
+            if param in param_eval:
                 newobj_param = eval(param_eval[param])
             else:
                 old_obj_attr_name = rule_param_to_oldattr.get(param, param)
@@ -234,8 +257,8 @@ class AAS_Classes_Upgrader:
         if old_obj_typ in cls.NOT_SUPPORTED_TYPES:
             raise NotImplementedError(f"Not supported type for upgrade: {old_obj_typ}")
 
-        if old_obj in cls.COMMON_OBJECTS:
-            upgraded_obj = old_obj
+        if old_obj in tuple(cls.OBJ_MAPPINGS.keys()):
+            upgraded_obj = cls.OBJ_MAPPINGS[old_obj]
         elif old_obj_typ in cls.COMMON_TYPES:
             upgraded_obj = old_obj
         elif old_obj_typ in cls.DICT_TYPES:
@@ -250,7 +273,6 @@ class AAS_Classes_Upgrader:
             upgraded_obj = cls._upgrade_from_defined_rules(old_obj)
         else:
             raise NotImplementedError(f"Upgrade of object {old_obj} failed, as it is not supported.")
-            upgraded_obj = old_obj
         return upgraded_obj
 
     @classmethod
