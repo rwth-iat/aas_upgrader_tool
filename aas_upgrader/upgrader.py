@@ -54,7 +54,7 @@ class AAS_Classes_Upgrader:
     common_ignored_params = ["display_name", "embedded_data_specifications", "supplemental_semantic_id", "extension",
                                "parent"]
     common_new_params_to_old_attributes = {}
-    common_evals_for_new_params = {"description": "model3.base.MultiLanguageTextType(old_obj.description)"}
+    common_evals_for_new_params = {"description": "model3.base.MultiLanguageTextType(old_obj.description) if old_obj.description else None"}
     upgrade_rules = {
         model2.base.AdministrativeInformation: {
             NEWCLASS: model3.base.AdministrativeInformation,
@@ -130,7 +130,7 @@ class AAS_Classes_Upgrader:
         },
         model2.submodel.MultiLanguageProperty: {
             NEWCLASS: model3.submodel.MultiLanguageProperty,
-            NEWPARAM_EVAL: {"value": "model3.base.MultiLanguageTextType(old_obj.value)"}
+            NEWPARAM_EVAL: {"value": "model3.base.MultiLanguageTextType(old_obj.value) if old_obj.value else None"}
         },
         model2.submodel.OperationVariable: {
             VAL_EVAL: "self.upgrade(old_obj.value)"
@@ -151,6 +151,7 @@ class AAS_Classes_Upgrader:
         model2.base.EntityType: {VAL_EVAL: "model3.base.EntityType(old_obj.value)"},
         model2.base.ModelingKind: {VAL_EVAL: "model3.base.ModellingKind(old_obj.value)"},
         model2.base.AssetKind: {VAL_EVAL: "model3.base.AssetKind(old_obj.value)"},
+        model2.datatypes.Date: {NEWCLASS: model3.datatypes.Date},
         model2.datatypes.GYear: {NEWCLASS: model3.datatypes.GYear},
         model2.datatypes.GMonthDay: {NEWCLASS: model3.datatypes.GMonthDay},
         model2.datatypes.GDay: {NEWCLASS: model3.datatypes.GDay},
