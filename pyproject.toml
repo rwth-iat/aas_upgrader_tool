@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "aas_editor"
 version = "v0.1"
 dependencies = [
-    "basyx-python-sdk>=1.0.0",
-    "pyi40aas>=0.2.3",
+    "basyx-python-sdk==1.0.0",
+    "basyx-python-sdk2 @ git+https://github.com/zrgt/basyx-python-sdk@archive/v2.0.1",
 ]
 
 requires-python = ">=3.10"
